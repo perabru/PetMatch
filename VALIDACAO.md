@@ -15,3 +15,9 @@ Também foram verificados a sintaxe do JavaScript, os IDs do HTML, os caminhos r
 Foram realizadas somente consultas de leitura. Os módulos oficiais do Firebase estão no endereço indicado pelo projeto. A consulta anônima ao caminho de diagnóstico privado de `camada2` recebeu HTTP 200; por isso, o aplicativo bloqueia a sincronização antes de carregar Auth ou iniciar leituras/gravações da conta. Nenhum teste de conta, mensagem, cadastro ou denúncia foi gravado no banco real.
 
 A publicação das regras e a habilitação do Authentication dependem de acesso administrativo ao Firebase. A publicação no Pages depende de o repositório ter o Pages habilitado. Ter o código no repositório, por si só, não comprova que essas configurações foram aplicadas.
+
+## Login Google e cadastro por e-mail — 20/10/2026
+
+As verificações em `tests/auth.test.mjs` cobrem o provedor Google com seleção de conta, integração com os observadores de sessão e isolamento no logout; erros de popup, configuração e conta existente; cadastro com confirmação de senha; envio do formulário de login; recuperação por e-mail; bloqueio de cliques repetidos e visibilidade da senha. São 13 cenários automatizados, executados com SDK e elementos de interface substituídos por simuladores locais, sem contas ou gravações em produção.
+
+Também foram aprovadas as verificações de sintaxe JavaScript e de unicidade dos IDs do HTML. Não houve verificação visual em navegador nesta atualização. O fluxo real de OAuth depende de Google e E-mail/senha habilitados e do domínio `perabru.github.io` autorizado no console Firebase; estes testes não comprovam que as configurações administrativas foram aplicadas.

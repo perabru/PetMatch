@@ -20,7 +20,7 @@ A configuração pública fornecida para o projeto **camada2** já está em `fir
 
 Para liberar o modo online:
 
-1. No console Firebase do projeto `camada2`, abra **Authentication → Sign-in method** e habilite **E-mail/senha** se ainda não estiver habilitado.
+1. No console Firebase do projeto `camada2`, abra **Authentication → Sign-in method** e habilite **E-mail/senha** e **Google**. No Google, selecione o e-mail de suporte solicitado e salve.
 2. Em **Authentication → Settings → Authorized domains**, adicione `perabru.github.io` para os fluxos de autenticação executados pelo site. Não inclua protocolo ou `/PetMatch/`.
 3. Em **Realtime Database → Rules**, aplique as regras de `rules/database.rules.json`, observando a seção seguinte para preservar outros aplicativos que usem o mesmo banco.
 4. Recarregue o site. O painel de conta informa o estado da conexão e eventuais erros.
@@ -45,7 +45,9 @@ Os cadastros, favoritos e registros ficam no navegador. O site pode ser aberto p
 
 ### Com conta e Firebase protegido
 
-- Cadastro, login, recuperação de senha e saída por E-mail/senha.
+- Login por E-mail/senha ou pelo botão **Entrar com Google**, inclusive Gmail.
+- Cadastro por e-mail com nome, senha e confirmação; a conta Google cria o acesso no primeiro login.
+- Telas separadas de entrada e cadastro, opção de mostrar/ocultar senha, recuperação de senha e saída da conta.
 - Perfis cadastrados na conta publicados no catálogo para outros visitantes.
 - Favoritos, interesses, ocorrências e anotações de atendimento sincronizados entre os dispositivos da mesma conta.
 - Interesses enviados aos tutores, caixa de recebidos, aceite/recusa, cancelamento e consulta de resposta.
@@ -53,6 +55,8 @@ Os cadastros, favoritos e registros ficam no navegador. O site pode ser aberto p
 - Dados de outra conta e formulários anteriores são removidos da tela na troca de usuário.
 
 Os dados locais **não** são enviados automaticamente ao entrar. O botão **Importar meus dados locais para minha conta** explica o que será publicado e exige confirmação. Fotos e a cidade no perfil cadastrado em conta fazem parte do catálogo público. Não inclua contatos pessoais na descrição pública do pet.
+
+O login Google abre uma janela oficial do provedor e permite escolher a conta. Autorize pop-ups do site quando o navegador solicitar. Em navegadores internos de redes sociais, abra o link no navegador do aparelho. O PetMatch informa erros de janela bloqueada, janela fechada, método desabilitado e domínio não autorizado. O site não solicita nem armazena a senha da conta Google. Habilitar o provedor Google e autorizar `perabru.github.io` exige acesso ao console Firebase; adicionar o botão ao código não altera essas configurações do projeto.
 
 Os oito perfis iniciais são exemplos fictícios. Os mascotes da imagem não são anúncios de adoção. Interesses nesses exemplos são anotações e não contatam um tutor real. Ocorrências e registros veterinários permanecem privados e não são encaminhados a autoridades, clínicas ou programas de atendimento.
 
@@ -75,3 +79,9 @@ No Windows, também é possível abrir `INICIAR_WINDOWS.bat`. O servidor escuta 
 Foram aprovados testes de interface com duas contas simuladas, funcionamento sem CDN, isolamento entre contas, falhas de permissão e rede, validação de fotos e backup, regras de acesso e integração do serviço com o SDK real do Realtime Database em emulador. O SDK de produção foi consultado apenas para verificar disponibilidade e permissões; esses testes não criaram usuários nem gravaram dados no Firebase de produção.
 
 Consulte `VALIDACAO.md` para o escopo e as limitações da verificação.
+
+Para executar as verificações de autenticação sem acessar o Firebase real, use Node.js 20 ou superior:
+
+```bash
+node --test tests/auth.test.mjs
+```

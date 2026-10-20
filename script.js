@@ -35,6 +35,7 @@
   let inbox = [];
   let cloudInitError = "";
   let authBusy = false;
+  let authMode = "login";
   const inAccount = () => Boolean(activeUser);
   const destination = () => inAccount() ? "na sua conta" : "neste navegador";
   const isExample = pet => pet.id.startsWith("sample-");
@@ -701,6 +702,7 @@
   function renderAccount() {
     $("authStatus").textContent = activeUser ? `Conectado como ${activeUser.displayName || activeUser.email || "tutor"}.${accountLoaded ? " Seus registros estão na sua conta." : " Carregando seus registros…"}` : "Você está usando o modo local. Os dados ficam somente neste navegador.";
     $("authForm").hidden = Boolean(activeUser);
+    $("authOptions").hidden = Boolean(activeUser);
     $("logoutBtn").hidden = !activeUser;
     $("syncLocalBtn").hidden = !activeUser;
     $("syncLocalBtn").disabled = !accountLoaded || saving;
@@ -726,36 +728,76 @@
     activeUser = user; accountLoaded = false; state = emptyState(); damagedData = null; inbox = [];
     if ($("modal").classList.contains("show")) closeModal();
     resetPetForm(); $("reportForm").reset(); showError("reportFormError"); showError("importError"); showError("authError");
-    $("authPassword").value = ""; $("authName").value = ""; $("authEmail").value = "";
+    $("authPassword").value = ""; $("authConfirmPassword").value = ""; $("authName").value = ""; $("authEmail").value = "";
+    setPasswordVisible(false);
     $("petSearch").value = ""; setFilter("todos");
     if (!user) { readInitialState(); notice("Modo local. Seus dados ficam neste navegador e não são enviados a outros tutores."); }
     else notice("Carregando os registros privados da sua conta. Os dados locais não serão importados automaticamente.");
     render();
+  }
+  function setPasswordVisible(visible) {
+    $("authPassword").type = visible ? "text" : "password";
+    $("authConfirmPassword").type = visible ? "text" : "password";
+    $("togglePasswordBtn").textContent = visible ? "Ocultar" : "Mostrar";
+    $("togglePasswordBtn").setAttribute("aria-label", visible ? "Ocultar senha" : "Mostrar senha");
+    $("togglePasswordBtn").setAttribute("aria-pressed", String(visible));
+  }
+  function setAuthMode(mode) {
+    if (authBusy) return;
+    authMode = mode === "register" ? "register" : "login";
+    const register = authMode === "register";
+    $("authNameField").hidden = !register;
+    $("authName").required = register;
+    $("authConfirmField").hidden = !register;
+    $("authConfirmPassword").required = register;
+    $("authConfirmPassword").value = "";
+    $("authPassword").setAttribute("autocomplete", register ? "new-password" : "current-password");
+    $("authPassword").placeholder = register ? "Crie uma senha com pelo menos 6 caracteres" : "Sua senha";
+    $("loginBtn").hidden = register;
+    $("registerBtn").hidden = !register;
+    $("resetPasswordBtn").hidden = register;
+    $("authFormTitle").textContent = register ? "Sua próxima amizade começa aqui." : "Que bom ter você aqui!";
+    $("authIntro").textContent = register ? "Cadastre seu nome, e-mail e senha ou comece com sua conta Google." : "Entre com seu e-mail e senha ou use sua conta Google.";
+    for (const [key, selected] of [["authLoginTab", !register], ["authRegisterTab", register]]) {
+      $(key).classList.toggle("active", selected);
+      $(key).setAttribute("aria-pressed", String(selected));
+    }
+    setPasswordVisible(false);
+    showError("authError");
   }
   async function authAction(operation) {
     if (authBusy) return;
     showError("authError");
     if (!cloud || cloudInitError) return showError("authError", cloudInitError || "O serviço de contas ainda está carregando. Aguarde e tente novamente.");
     const email = $("authEmail").value.trim(), password = $("authPassword").value;
-    if (operation !== "logout") {
+    if (operation !== "logout" && operation !== "google") {
       if (!email || !$("authEmail").reportValidity()) return;
       if (operation !== "reset" && !$("authPassword").reportValidity()) return;
       if (operation === "register" && !$("authName").value.trim()) return showError("authError", "Informe seu nome para criar a conta.");
+      if (operation === "register" && password !== $("authConfirmPassword").value) return showError("authError", "As senhas não conferem. Digite a mesma senha nos dois campos.");
     }
     authBusy = true;
-    const buttons = ["loginBtn","registerBtn","resetPasswordBtn","logoutBtn"];
+    const buttons = ["loginBtn","registerBtn","resetPasswordBtn","logoutBtn","googleLoginBtn","authLoginTab","authRegisterTab"];
     buttons.forEach(key => { $(key).disabled = true; });
+    $("authOptions").setAttribute("aria-busy", "true");
     try {
       if (operation === "login") await cloud.login(email, password);
+      if (operation === "google") await cloud.loginWithGoogle();
       if (operation === "register") await cloud.register(email, password, $("authName").value.trim());
       if (operation === "logout") await cloud.logout();
       if (operation === "reset") { await cloud.resetPassword(email); showToast("Se o endereço puder receber a recuperação, confira a caixa de entrada e o spam."); }
       $("authPassword").value = "";
+      $("authConfirmPassword").value = "";
+      setPasswordVisible(false);
     } catch (error) { showError("authError", error.message); showToast(error.message); }
-    finally { authBusy = false; buttons.forEach(key => { $(key).disabled = false; }); renderAccount(); }
+    finally { authBusy = false; buttons.forEach(key => { $(key).disabled = false; }); $("authOptions").setAttribute("aria-busy", "false"); renderAccount(); }
   }
-  $("authForm").addEventListener("submit", event => { event.preventDefault(); authAction("login"); });
-  $("registerBtn").addEventListener("click", () => authAction("register"));
+  $("authForm").addEventListener("submit", event => { event.preventDefault(); authAction(authMode); });
+  $("authLoginTab").addEventListener("click", () => setAuthMode("login"));
+  $("authRegisterTab").addEventListener("click", () => setAuthMode("register"));
+  $("googleLoginBtn").addEventListener("click", () => authAction("google"));
+  $("togglePasswordBtn").addEventListener("click", () => setPasswordVisible($("authPassword").type === "password"));
+  setAuthMode("login");
   $("resetPasswordBtn").addEventListener("click", () => authAction("reset"));
   $("logoutBtn").addEventListener("click", () => authAction("logout"));
   $("localModeBtn").addEventListener("click", () => { showError("authError"); showToast("Modo local selecionado. Seus dados continuam neste navegador."); $("match").scrollIntoView({ behavior: "smooth" }); });

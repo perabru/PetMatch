@@ -53,7 +53,12 @@ export function explainFirebaseError(original) {
     "auth/user-disabled": "Esta conta foi desativada no Firebase.",
     "auth/too-many-requests": "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
     "auth/network-request-failed": "Não foi possível acessar o Firebase. Confira a conexão e tente novamente.",
-    "auth/operation-not-allowed": "O acesso por e-mail e senha ainda precisa ser habilitado em Authentication no projeto Firebase.",
+    "auth/operation-not-allowed": "Este método de acesso precisa ser habilitado em Authentication no Firebase: E-mail/senha ou Google.",
+    "auth/popup-blocked": "O navegador bloqueou a janela do Google. Permita pop-ups para este site e toque em Entrar com Google novamente. Em navegadores internos de aplicativos, abra o PetMatch no Chrome ou Safari.",
+    "auth/popup-closed-by-user": "A janela do Google foi fechada antes de concluir. Toque em Entrar com Google para tentar novamente.",
+    "auth/cancelled-popup-request": "A tentativa anterior de entrar com Google foi cancelada. Tente novamente.",
+    "auth/account-exists-with-different-credential": "Este e-mail já usa outro método de acesso. Entre com o método usado ao criar sua conta para acessar seus registros.",
+    "auth/operation-not-supported-in-this-environment": "Este navegador não oferece suporte ao acesso com Google. Abra o site pelo GitHub Pages no Chrome, Edge, Firefox ou Safari.",
     "auth/configuration-not-found": "O Authentication ainda precisa ser configurado no projeto Firebase.",
     "auth/unauthorized-domain": "Este domínio ainda precisa ser autorizado em Authentication no projeto Firebase.",
     "auth/invalid-api-key": "A configuração do Firebase não foi aceita pelo projeto. Confira a chave e suas restrições.",
@@ -260,6 +265,17 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
     async login(email, password) {
       try { requireAuthReady(); const result = await authSdk.signInWithEmailAndPassword(auth, String(email).trim(), password); return publicUser(result.user); }
       catch (error) { mapThrow(error); }
+    },
+    async loginWithGoogle() {
+      try {
+        requireAuthReady();
+        const provider = new authSdk.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        // Invoke directly from the button gesture, before awaiting anything.
+        // Popup auth also avoids cross-site redirect storage on GitHub Pages.
+        const result = await authSdk.signInWithPopup(auth, provider);
+        return publicUser(result.user);
+      } catch (error) { mapThrow(error); }
     },
     async logout() {
       try { requireAuthReady(); await authSdk.signOut(auth); }
