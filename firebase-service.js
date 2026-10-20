@@ -12,8 +12,8 @@ export const firebaseConfig = Object.freeze({
   projectId: "camada2",
   storageBucket: "camada2.firebasestorage.app",
   messagingSenderId: "300681473888",
-  appId: "1:300681473888:web:6827ac564cb9a10b60f805",
-  measurementId: "G-S4NC9L64SR"
+  appId: "1:300681473888:web:c328decb4a23f71560f805",
+  measurementId: "G-CTE5MFW9G8"
 });
 const SDK_BASE = "https://www.gstatic.com/firebasejs/13.0.0/";
 const ROOT = "petmatchV1";
