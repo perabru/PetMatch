@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PetMatch: organize perfis de pets, amizades, interesses em adoção e cuidados com os animais." />
+  <meta name="theme-color" content="#ef4b4f" />
+  <title>PetMatch | O match perfeito para o seu pet</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <noscript><p class="noscript-message">Ative o JavaScript no navegador para cadastrar pets, filtrar perfis e salvar seus registros.</p></noscript>
+  <header class="header" id="inicio">
+    <div class="container nav">
+      <a class="brand" href="#inicio" aria-label="PetMatch — início"><span class="brand-mark">P</span><span>Pet<span>Match</span><b>.</b></span></a>
+      <button class="menu-btn" id="menuBtn" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu" type="button"><span></span><span></span><span></span></button>
+      <nav class="menu" id="menu" aria-label="Navegação principal">
+        <a href="#match">Match</a><a href="#adocao">Adoção</a><a href="#recebidos">Recebidos</a><a href="#atividade">Meus registros</a><a href="#conta">Minha conta</a><a class="btn btn-small btn-outline" href="#cadastro">Cadastrar pet</a>
+      </nav>
+    </div>
+  </header>
+  <main id="conteudo">
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <span class="eyebrow">BOAS AMIZADES COMEÇAM AQUI</span>
+          <h1 id="heroTitle">O match perfeito para o <span>seu pet</span>.</h1>
+          <p>Tem espaço para mais amizade nessa história. Encontre companhia para seu pet, conheça animais para adoção e faça parte de uma comunidade que cuida.</p>
+          <div class="hero-actions"><a class="btn btn-primary" href="#match">Encontrar um match</a><a class="btn btn-ghost" href="#adocao">Quero adotar</a></div>
+          <p class="local-note" id="storageNotice" role="status">Escolha como participar: use sem conta para guardar dados neste navegador ou entre para sincronizar seus registros e conectar-se a outros tutores.</p>
+          <div class="hero-stats" aria-label="Resumo de perfis e interesses">
+            <div><strong id="statPets">0</strong><span>perfis na lista</span></div>
+            <div><strong id="statMatches">0</strong><span>interesses em amizade</span></div>
+            <div><strong id="statAdoption">0</strong><span>interesses em adoção</span></div>
+          </div>
+        </div>
+        <div class="hero-visual reveal">
+          <figure class="mascot-showcase">
+            <div class="mascot-photo-wrap">
+              <img class="mascot-photo" src="assets/mascotes-petmatch.png" width="1536" height="1024" alt="Os dois cachorros garotos-propaganda do PetMatch juntos: um de pelo claro com gravata amarela e outro de pelo preto e castanho com camisa, diante de um fundo amarelo." fetchpriority="high" />
+              <span class="mascot-badge">Nossos garotos-propaganda</span>
+            </div>
+            <figcaption><span class="mascot-caption-mark" aria-hidden="true">♡</span><div><strong>Uma dupla para dar as boas-vindas.</strong><p>Mais carinho, mais encontros e um mundo de novas amizades.</p></div></figcaption>
+          </figure>
+          <span class="mascot-side-note" aria-hidden="true">A amizade fica ainda melhor em dupla.</span>
+        </div>
+      </div>
+    </section>
+    <section class="section account-section" id="conta" aria-labelledby="accountTitle">
+      <div class="container account-layout">
+        <div class="account-copy"><span class="eyebrow">SEU ESPAÇO NO PETMATCH</span><h2 id="accountTitle">Conecte sua conta.<br>Leve seus pets com você.</h2><p>Entre para sincronizar seus registros e receber interesses de outros tutores. Se preferir, explore sem conta e salve seus dados apenas neste navegador.</p><div class="account-benefits"><span>Perfis dos seus pets</span><span>Interesses recebidos</span><span>Registros na sua conta</span></div><p class="connection-status" id="connectionStatus" role="status">Verificando a conexão com o serviço de contas…</p></div>
+        <div class="account-card">
+          <p class="auth-status" id="authStatus" role="status">Você está usando o modo local.</p>
+          <form id="authForm" class="auth-form">
+            <label for="authName">Seu nome <span class="form-hint">Para criar uma conta</span><input id="authName" name="displayName" type="text" autocomplete="name" maxlength="80" placeholder="Como você quer ser chamado?" /></label>
+            <label for="authEmail">E-mail<input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="voce@exemplo.com" /></label>
+            <label for="authPassword">Senha<input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required placeholder="Pelo menos 6 caracteres" /></label>
+            <p id="authError" class="form-error" role="alert" hidden></p>
+            <div class="auth-actions"><button id="loginBtn" class="btn btn-primary" type="submit">Entrar</button><button id="registerBtn" class="btn btn-ghost" type="button">Criar conta</button></div>
+            <button id="resetPasswordBtn" class="text-btn" type="button">Recuperar senha</button>
+          </form>
+          <div class="account-mode-actions"><button id="logoutBtn" class="btn btn-ghost" type="button" hidden>Sair da conta</button><button id="localModeBtn" class="text-btn" type="button">Usar sem conta</button></div>
+          <div class="account-sync"><p class="form-hint" id="syncInfo">Importar dados locais para a conta publica os perfis dos seus pets para outros tutores. Ocorrências e anotações de atendimento continuam privadas e não são encaminhadas a terceiros.</p><button id="syncLocalBtn" class="btn btn-ghost" type="button" hidden>Importar meus dados locais para minha conta</button></div>
+          <label class="consent-label" for="analyticsConsent"><input id="analyticsConsent" type="checkbox" /><span>Permitir métricas opcionais de uso.<small>Você pode mudar essa escolha quando quiser. Ela não é necessária para usar o PetMatch.</small></span></label>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="match" aria-labelledby="matchTitle">
+      <div class="container">
+        <div class="section-heading reveal"><span class="eyebrow">MATCH DE PETS</span><h2 id="matchTitle">Encontre novas amizades</h2><p>Explore os perfis da comunidade e os exemplos identificados. Entre na sua conta para compartilhar seus pets e enviar interesses a outros tutores.</p></div>
+        <label class="search-label" for="petSearch">Buscar por nome, raça ou cidade<input id="petSearch" type="search" placeholder="Ex.: Mel, Beagle ou São José dos Campos" maxlength="150" autocomplete="off" /></label>
+        <div class="filters reveal" role="group" aria-label="Filtrar perfis">
+          <button class="filter active" data-filter="todos" aria-pressed="true" type="button">Todos</button><button class="filter" data-filter="cachorro" aria-pressed="false" type="button">Cachorros</button><button class="filter" data-filter="gato" aria-pressed="false" type="button">Gatos</button><button class="filter" data-filter="outro" aria-pressed="false" type="button">Outros</button><button class="filter" data-filter="pequeno" aria-pressed="false" type="button">Pequeno porte</button><button class="filter" data-filter="favoritos" aria-pressed="false" type="button">♥ Favoritos</button><button class="filter" data-filter="meus" aria-pressed="false" type="button">Meus pets</button>
+        </div>
+        <div class="cards-grid" id="matchGrid"></div>
+        <p id="matchEmpty" class="empty-state" role="status" hidden>Nenhum perfil encontrado. Tente outro filtro ou cadastre um pet.</p>
+      </div>
+    </section>
+    <section class="section alt-section" id="adocao" aria-labelledby="adoptionTitle">
+      <div class="container split">
+        <div class="adoption-copy reveal"><span class="eyebrow">ADOÇÃO</span><h2 id="adoptionTitle">Um novo lar pode começar aqui.</h2><p>Conheça os animais divulgados para adoção e registre seu interesse em conhecê-los. Perfis de exemplo são identificados e não representam anúncios reais.</p>
+          <div class="feature-list"><div><span aria-hidden="true">✓</span><p><strong>Perfis organizados</strong><br>Consulte as informações de cada animal.</p></div><div><span aria-hidden="true">✓</span><p><strong>Adoção responsável</strong><br>Planeje o acolhimento e os cuidados necessários.</p></div><div><span aria-hidden="true">✓</span><p><strong>Seu acompanhamento</strong><br>Consulte os interesses salvos em Meus registros.</p></div></div>
+          <p class="local-note">Com sua conta, o responsável por um anúncio real pode receber seu interesse. Enviar interesse não conclui uma adoção. No modo local e nos perfis de exemplo, o registro fica somente com você.</p><button class="btn btn-primary" id="seeAdoption" type="button">Ver pets para adoção</button>
+        </div>
+        <div class="adoption-panel reveal" id="adoptionList" aria-label="Perfis para adoção"></div>
+      </div>
+    </section>
+    <section class="section" id="denuncias" aria-labelledby="reportTitle">
+      <div class="container"><div class="section-heading reveal"><span class="eyebrow">PROTEÇÃO ANIMAL</span><h2 id="reportTitle">Registre uma ocorrência</h2><p>Organize informações sobre uma situação de violência ou abandono. As ocorrências ficam privadas no modo local ou na sua conta e não são encaminhadas às autoridades.</p></div>
+        <div class="report-box reveal"><form id="reportForm">
+          <div class="form-grid"><label for="reportType">Tipo de ocorrência<select id="reportType" name="type" required><option value="">Selecione</option><option>Maus-tratos</option><option>Abandono</option><option>Animal ferido</option><option>Falta de alimento/água</option><option>Outro</option></select></label><label for="reportCity">Cidade<input id="reportCity" name="city" type="text" placeholder="Ex.: São José dos Campos" maxlength="100" required /></label></div>
+          <label for="reportLocation">Local aproximado<input id="reportLocation" name="location" type="text" placeholder="Bairro, rua ou ponto de referência" maxlength="200" required /></label>
+          <label for="reportDescription">Descreva o que aconteceu<textarea id="reportDescription" name="description" rows="5" placeholder="Informe os detalhes da situação..." maxlength="3000" required></textarea></label>
+          <p id="reportFormError" class="form-error" role="alert" hidden></p>
+          <div class="form-footer"><p>🔒 Evite incluir dados pessoais de terceiros. Para denunciar, procure o serviço oficial responsável em sua região.</p><button class="btn btn-primary" type="submit">Salvar ocorrência</button></div>
+        </form></div>
+      </div>
+    </section>
+    <section class="section alt-section" id="campanhas" aria-labelledby="campaignTitle">
+      <div class="container"><div class="section-heading reveal"><span class="eyebrow">CAMPANHAS</span><h2 id="campaignTitle">Informação também protege.</h2><p>Conheça cuidados e atitudes que fazem parte do bem-estar animal.</p></div>
+        <div class="campaign-grid">
+          <article class="campaign-card reveal"><div class="campaign-cover cover-red" aria-hidden="true">💉</div><div class="campaign-content"><span>Saúde</span><h3>Vacinação salva vidas</h3><p>Mantenha a carteirinha do seu pet atualizada e consulte um profissional veterinário.</p><button class="text-btn campaign-more" type="button">Saiba mais →</button></div></article>
+          <article class="campaign-card reveal"><div class="campaign-cover cover-yellow" aria-hidden="true">☀️</div><div class="campaign-content"><span>Cuidados</span><h3>Proteção nos dias quentes</h3><p>Água fresca, sombra e passeios em horários mais amenos ajudam a evitar riscos.</p><button class="text-btn campaign-more" type="button">Saiba mais →</button></div></article>
+          <article class="campaign-card reveal"><div class="campaign-cover cover-blue" aria-hidden="true">🏡</div><div class="campaign-content"><span>Adoção</span><h3>Adote com responsabilidade</h3><p>Ter um animal exige tempo, planejamento, cuidados, despesas e compromisso.</p><button class="text-btn campaign-more" type="button">Saiba mais →</button></div></article>
+        </div>
+      </div>
+    </section>
+    <section class="section vet-section" id="veterinario" aria-labelledby="vetTitle"><div class="container vet-box reveal"><div><span class="eyebrow light">CUIDADO ANIMAL</span><h2 id="vetTitle">Vacinação e atendimento veterinário.</h2><p>Organize seu interesse em vacinação ou atendimento e acompanhe suas anotações. Não há agendamento nem envio para clínicas ou programas sociais.</p></div><button class="btn btn-light" id="vetBtn" type="button">Registrar interesse</button></div></section>
+    <section class="section" id="cadastro" aria-labelledby="petFormTitle">
+      <div class="container register-box reveal"><div class="register-copy"><span class="eyebrow">SEU PET, SEU PERFIL</span><h2 id="petFormTitle">Cadastre seu pet no PetMatch</h2><p>Crie um perfil de amizade ou adoção. Com sua conta conectada, seus pets podem ser vistos por outros tutores; no modo local, ficam apenas neste navegador. Você pode editar ou remover seus próprios perfis.</p><p class="local-note">Guarde uma cópia em Exportar meus dados. Os registros locais e os da conta são separados; você escolhe quando importar seus dados locais para a conta.</p></div>
+        <form id="petForm" class="quick-form">
+          <input id="petId" name="id" type="hidden" />
+          <label for="petName">Nome do pet<input id="petName" name="name" type="text" placeholder="Ex.: Pipoca" maxlength="80" required /></label>
+          <label for="petType">Espécie<select id="petType" name="type" required><option value="">Selecione</option><option value="cachorro">Cachorro</option><option value="gato">Gato</option><option value="outro">Outro</option></select></label>
+          <label for="petAge">Idade<input id="petAge" name="age" type="number" min="0" max="40" step="1" placeholder="Ex.: 2" required /></label>
+          <label for="petAgeUnit">Unidade da idade<select id="petAgeUnit" name="ageUnit"><option value="anos">Anos</option><option value="meses">Meses</option></select></label>
+          <label for="petSize">Porte<select id="petSize" name="size" required><option value="pequeno">Pequeno</option><option value="medio">Médio</option><option value="grande">Grande</option></select></label>
+          <label for="petBreed">Raça ou descrição<input id="petBreed" name="breed" type="text" placeholder="Ex.: SRD" maxlength="80" /></label>
+          <label for="petCity">Cidade<input id="petCity" name="city" type="text" placeholder="Ex.: São José dos Campos" maxlength="100" required /></label>
+          <label for="petPurpose">Objetivo<select id="petPurpose" name="purpose"><option value="amizade">Amizade</option><option value="adocao">Adoção</option></select></label>
+          <label class="full-width" for="petDescription">Sobre o pet<textarea id="petDescription" name="description" rows="3" placeholder="Conte sobre a personalidade e os cuidados do pet." maxlength="1000"></textarea></label>
+          <label class="full-width" for="petPhoto">Foto do pet <span class="form-hint">Opcional · JPG, PNG ou WebP</span><input id="petPhoto" name="photo" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+          <div class="photo-preview full-width"><img id="petPhotoPreview" alt="Prévia da foto do pet" hidden /><button id="removePhoto" class="text-btn" type="button" hidden>Remover foto</button></div>
+          <p id="petFormError" class="form-error full-width" role="alert" hidden></p>
+          <div class="form-actions full-width"><button class="btn btn-primary" id="petSubmit" type="submit">Cadastrar pet</button><button class="btn btn-ghost" id="cancelEdit" type="button" hidden>Cancelar edição</button></div>
+        </form>
+      </div>
+    </section>
+    <section class="section" id="recebidos" aria-labelledby="inboxTitle">
+      <div class="container"><div class="section-heading"><span class="eyebrow">NOVAS CONEXÕES</span><h2 id="inboxTitle">Interesses recebidos <span class="inbox-count" id="inboxCount">0</span></h2><p>Acompanhe os interesses enviados por outros tutores aos pets da sua conta. Esta área não encaminha ocorrências ou pedidos de atendimento a serviços externos.</p></div><div id="inboxList" class="activity-list"></div><p id="inboxEmpty" class="empty-state">Entre na sua conta para acompanhar os interesses recebidos pelos seus pets.</p></div>
+    </section>
+    <section class="section alt-section" id="atividade" aria-labelledby="activityTitle">
+      <div class="container"><div class="section-heading"><span class="eyebrow">SEU ACOMPANHAMENTO</span><h2 id="activityTitle">Meus registros</h2><p>Acompanhe os interesses em amizade e adoção, suas ocorrências e anotações de atendimento. Os registros exibidos seguem o modo atual: local ou conta conectada.</p></div>
+        <div class="backup-box"><div><strong>Seus dados com você</strong><p class="muted">O arquivo exportado inclui seus pets, favoritos e todos os registros, inclusive ocorrências. Guarde-o em um local privado.</p></div><div class="backup-actions"><button class="btn btn-primary" id="exportData" type="button">Exportar meus dados</button><label class="btn btn-ghost import-label" for="importData">Importar backup<input id="importData" type="file" accept="application/json,.json" /></label></div><p id="importError" class="form-error full-width" role="alert" hidden></p></div>
+        <p id="activityCounts" class="activity-counts" aria-live="polite"></p><div id="activityList" class="activity-list"></div><p id="activityEmpty" class="empty-state" hidden>Você ainda não salvou registros. Comece explorando os perfis ou cadastrando seu pet.</p>
+        <button class="text-btn" id="clearData" type="button">Apagar meus registros</button>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><div class="container footer-grid"><div><a class="brand footer-brand" href="#inicio"><span class="brand-mark">P</span><span>Pet<span>Match</span><b>.</b></span></a><p>Conexões, adoção e proteção animal em um só lugar.</p></div><div class="footer-links"><a href="#match">Match</a><a href="#adocao">Adoção</a><a href="#veterinario">Veterinário</a><a href="#atividade">Meus registros</a></div></div><div class="container footer-bottom"><span>© <span id="year"></span> PetMatch. Conexões que fazem bem.</span><span>Feito com ❤️ pelos pets.</span></div></footer>
+  <div class="modal" id="modal" aria-hidden="true"><div class="modal-backdrop" data-close="true"></div><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText" tabindex="-1"><button class="modal-close" id="modalClose" aria-label="Fechar" type="button">×</button><div class="modal-icon" aria-hidden="true">🐾</div><h3 id="modalTitle">PetMatch</h3><p id="modalText"></p><div id="modalBody"></div><p id="modalError" class="form-error" role="alert" hidden></p><div id="modalActions"></div><button class="btn btn-primary" id="modalOk" type="button">Continuar</button></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>

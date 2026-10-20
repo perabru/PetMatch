@@ -1,0 +1,282 @@
+{
+  "rules": {
+    "petmatchV1": {
+      ".read": false,
+      ".write": false,
+      "users": {
+        "$uid": {
+          "state": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && newData.exists() && ((!data.exists() && newData.child('revision').val() === 1) || (data.exists() && newData.child('revision').val() === data.child('revision').val() + 1))",
+            ".validate": "newData.hasChildren(['schemaVersion', 'revision'])",
+            "schemaVersion": {
+              ".validate": "newData.val() === 1"
+            },
+            "revision": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 9007199254740991 && newData.val() % 1 === 0"
+            },
+            "pets": {
+              ".validate": "newData.hasChildren()",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9][0-9]{0,2})$/) && (newData.hasChildren([\"id\", \"name\", \"type\", \"age\", \"ageUnit\", \"size\", \"city\", \"purpose\", \"createdAt\", \"updatedAt\"]))",
+                "id": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/) && !newData.val().beginsWith('sample-')"
+                },
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                },
+                "type": {
+                  ".validate": "newData.val() === \"cachorro\" || newData.val() === \"gato\" || newData.val() === \"outro\""
+                },
+                "age": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40 && newData.val() % 1 === 0"
+                },
+                "ageUnit": {
+                  ".validate": "newData.val() === \"anos\" || newData.val() === \"meses\""
+                },
+                "size": {
+                  ".validate": "newData.val() === \"pequeno\" || newData.val() === \"medio\" || newData.val() === \"grande\""
+                },
+                "breed": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 80"
+                },
+                "city": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+                },
+                "purpose": {
+                  ".validate": "newData.val() === \"amizade\" || newData.val() === \"adocao\""
+                },
+                "description": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+                },
+                "photo": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 700000 && (newData.val() === '' || newData.val().matches(/^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+\\/]+=*$/))"
+                },
+                "createdAt": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "updatedAt": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "$other": {
+                  ".validate": "false"
+                }
+              }
+            },
+            "favorites": {
+              ".validate": "newData.hasChildren()",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9][0-9]{0,2})$/) && (newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/))"
+              }
+            },
+            "interests": {
+              ".validate": "newData.hasChildren()",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9][0-9]{0,2})$/) && (newData.hasChildren([\"id\", \"createdAt\", \"kind\", \"petId\", \"petName\", \"name\", \"message\", \"status\"]))",
+                "id": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/)"
+                },
+                "createdAt": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "kind": {
+                  ".validate": "newData.val() === \"amizade\" || newData.val() === \"adocao\""
+                },
+                "petId": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/)"
+                },
+                "petName": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                },
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                },
+                "message": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+                },
+                "status": {
+                  ".validate": "newData.val() === \"salvo\" || newData.val() === \"cancelado\""
+                },
+                "recipientId": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128 && newData.val().matches(/^[A-Za-z0-9_-]+$/)"
+                },
+                "$other": {
+                  ".validate": "false"
+                }
+              }
+            },
+            "reports": {
+              ".validate": "newData.hasChildren()",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9][0-9]{0,2})$/) && (newData.hasChildren([\"id\", \"createdAt\", \"type\", \"city\", \"location\", \"description\"]))",
+                "id": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/)"
+                },
+                "createdAt": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "type": {
+                  ".validate": "newData.val() === \"Maus-tratos\" || newData.val() === \"Abandono\" || newData.val() === \"Animal ferido\" || newData.val() === \"Falta de alimento/água\" || newData.val() === \"Outro\""
+                },
+                "city": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+                },
+                "location": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200"
+                },
+                "description": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 3000"
+                },
+                "$other": {
+                  ".validate": "false"
+                }
+              }
+            },
+            "vetRequests": {
+              ".validate": "newData.hasChildren()",
+              "$index": {
+                ".validate": "$index.matches(/^(0|[1-9][0-9]{0,2})$/) && (newData.hasChildren([\"id\", \"createdAt\", \"name\", \"pet\", \"city\", \"service\", \"message\", \"status\"]))",
+                "id": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/)"
+                },
+                "createdAt": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                },
+                "pet": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+                },
+                "city": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+                },
+                "service": {
+                  ".validate": "newData.val() === \"Vacinação\" || newData.val() === \"Consulta\" || newData.val() === \"Castração\" || newData.val() === \"Outro\""
+                },
+                "message": {
+                  ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+                },
+                "status": {
+                  ".validate": "newData.val() === \"salvo\" || newData.val() === \"cancelado\""
+                },
+                "$other": {
+                  ".validate": "false"
+                }
+              }
+            },
+            "$other": {
+              ".validate": "false"
+            }
+          },
+          "$other": {
+            ".validate": "false"
+          }
+        }
+      },
+      "publicPets": {
+        ".read": true,
+        ".indexOn": [
+          "ownerId",
+          "purpose",
+          "city"
+        ],
+        "$petId": {
+          ".validate": "newData.hasChildren([\"id\", \"name\", \"type\", \"age\", \"ageUnit\", \"size\", \"city\", \"purpose\", \"createdAt\", \"updatedAt\", \"ownerId\"])",
+          "id": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/) && newData.val() === $petId && !newData.val().beginsWith('sample-')"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+          },
+          "type": {
+            ".validate": "newData.val() === \"cachorro\" || newData.val() === \"gato\" || newData.val() === \"outro\""
+          },
+          "age": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40 && newData.val() % 1 === 0"
+          },
+          "ageUnit": {
+            ".validate": "newData.val() === \"anos\" || newData.val() === \"meses\""
+          },
+          "size": {
+            ".validate": "newData.val() === \"pequeno\" || newData.val() === \"medio\" || newData.val() === \"grande\""
+          },
+          "breed": {
+            ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 80"
+          },
+          "city": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+          },
+          "purpose": {
+            ".validate": "newData.val() === \"amizade\" || newData.val() === \"adocao\""
+          },
+          "description": {
+            ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 700000 && (newData.val() === '' || newData.val().matches(/^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+\\/]+=*$/))"
+          },
+          "createdAt": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "updatedAt": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "ownerId": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128 && newData.val() === auth.uid && (!data.exists() || newData.val() === data.val())"
+          },
+          "$other": {
+            ".validate": "false"
+          },
+          ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('ownerId').val() === auth.uid) || (data.exists() && data.child('ownerId').val() === auth.uid && (!newData.exists() || newData.child('ownerId').val() === data.child('ownerId').val()))) && ((!root.child('petmatchV1/users').child(auth.uid).child('state/revision').exists() && newData.parent().parent().child('users').child(auth.uid).child('state/revision').val() === 1) || (root.child('petmatchV1/users').child(auth.uid).child('state/revision').exists() && newData.parent().parent().child('users').child(auth.uid).child('state/revision').val() === root.child('petmatchV1/users').child(auth.uid).child('state/revision').val() + 1))"
+        }
+      },
+      "inbox": {
+        "$recipientUid": {
+          ".read": "auth != null && auth.uid === $recipientUid",
+          "$recordId": {
+            ".validate": "newData.hasChildren([\"id\", \"senderId\", \"recipientId\", \"petId\", \"petName\", \"kind\", \"name\", \"message\", \"createdAt\", \"status\"])",
+            "id": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/) && newData.val() === $recordId) && (!data.exists() || newData.val() === data.val())"
+            },
+            "senderId": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 128) && (!data.exists() || newData.val() === data.val())"
+            },
+            "recipientId": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 128 && newData.val() === $recipientUid) && (!data.exists() || newData.val() === data.val())"
+            },
+            "petId": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 100 && newData.val().matches(/^[A-Za-z0-9_-]+$/)) && (!data.exists() || newData.val() === data.val())"
+            },
+            "petName": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 80) && (!data.exists() || newData.val() === data.val())"
+            },
+            "kind": {
+              ".validate": "(newData.val() === \"amizade\" || newData.val() === \"adocao\") && (!data.exists() || newData.val() === data.val())"
+            },
+            "name": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 80) && (!data.exists() || newData.val() === data.val())"
+            },
+            "message": {
+              ".validate": "(newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000) && (!data.exists() || newData.val() === data.val())"
+            },
+            "createdAt": {
+              ".validate": "(newData.isString() && newData.val().length >= 1 && newData.val().length <= 40) && (!data.exists() || newData.val() === data.val())"
+            },
+            "status": {
+              ".validate": "newData.val() === \"pendente\" || newData.val() === \"aceito\" || newData.val() === \"recusado\" || newData.val() === \"cancelado\""
+            },
+            "$other": {
+              ".validate": "false"
+            },
+            ".read": "auth != null && (!data.exists() || auth.uid === $recipientUid || auth.uid === data.child('senderId').val())",
+            ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('senderId').val() === auth.uid && newData.child('recipientId').val() === $recipientUid && auth.uid !== $recipientUid && newData.child('status').val() === 'pendente' && root.child('petmatchV1/publicPets').child(newData.child('petId').val()).child('ownerId').val() === $recipientUid && root.child('petmatchV1/publicPets').child(newData.child('petId').val()).child('purpose').val() === newData.child('kind').val() && root.child('petmatchV1/publicPets').child(newData.child('petId').val()).child('name').val() === newData.child('petName').val()) || (data.exists() && auth.uid === $recipientUid && (!newData.exists() || (data.child('status').val() === 'pendente' && (newData.child('status').val() === 'aceito' || newData.child('status').val() === 'recusado')))) || (data.exists() && auth.uid === data.child('senderId').val() && newData.exists() && newData.child('status').val() === 'cancelado'))"
+          }
+        }
+      },
+      "$other": {
+        ".validate": "false"
+      }
+    }
+  }
+}
