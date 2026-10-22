@@ -154,6 +154,7 @@
     } finally {
       saving = false;
       submits.forEach(([button, disabled]) => { button.disabled = disabled; });
+      renderAccount();
     }
   }
   const copyState = () => JSON.parse(JSON.stringify(state));
@@ -882,7 +883,7 @@
     cloudStarting = true; cloudInitError = ""; reloadForCloud = false; renderConnection({ phase: "loading", message: "Preparando a sincronização dos registros…" });
     try {
       ++cloudImportAttempt;
-      const serviceURL = cloudImportAttempt === 1 ? "./firebase-service.js?v=20261022a" : `./firebase-service.js?v=20261022a&retry=${cloudImportAttempt}`;
+      const serviceURL = cloudImportAttempt === 1 ? "./firebase-service.js?v=20261022b" : `./firebase-service.js?v=20261022b&retry=${cloudImportAttempt}`;
       ({ cloud } = await import(serviceURL));
       await cloud.init({
         onAuth: switchAccount,

@@ -47,3 +47,55 @@ test('import refuses executable photo URLs and duplicate profile IDs', () => {
   backup.pets = [pet('same-id'), pet('same-id')];
   assert.throws(() => box.restore(backup), /identificadores de pets repetidos/);
 });
+
+// Use the application's actual save and account rendering functions together.
+// This catches controls that render while saving=true but remain disabled after
+// the asynchronous write completes.
+const saveSource = script.slice(script.indexOf('  async function save('), script.indexOf('  const copyState ='));
+const accountSource = script.slice(script.indexOf('  function renderAccount('), script.indexOf('  function unavailableAccountMessage('));
+function savingControlsContext(mode = 'local') {
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, { disabled: false, hidden: false, textContent: '' });
+    return elements.get(id);
+  };
+  const submit = { disabled: false };
+  const box = vm.createContext({ elements, element, submit, mode });
+  vm.runInContext(declarations + `
+    const STORAGE_KEY = 'petmatch.data.v1';
+    const $ = element;
+    const document = { querySelectorAll: () => [submit] };
+    const localStorage = { value: null, getItem() { return this.value; }, setItem(_key, value) { this.value = value; } };
+    const notice = () => {}, showToast = () => {}, showError = () => {};
+    const snapshots = [];
+    ${accountSource}
+    const render = () => { renderAccount(); snapshots.push({ importDisabled: $('importData').disabled, clearDisabled: $('clearData').disabled }); };
+    let release;
+    const withStorageLock = callback => new Promise((resolve, reject) => {
+      release = () => { try { resolve(callback()); } catch (error) { reject(error); } };
+    });
+    ${saveSource}
+    if (mode === 'cloud') {
+      activeUser = { uid: 'owner', displayName: 'Tutor' }; accountLoaded = true;
+      cloud = { syncAllowed: true, commit: async (next, revision) => ({ ...next, revision: revision + 1 }) };
+    }
+    globalThis.begin = () => save({ ...state, favorites: ['sample-luke'] });
+    globalThis.release = () => release();
+    globalThis.inspect = () => ({ snapshots, saving, submitDisabled: submit.disabled });
+  `, box);
+  return { box, element };
+}
+
+for (const mode of ['local', 'cloud']) {
+  test(`${mode} save re-enables import, clear and connection controls after completion`, async () => {
+    const { box, element } = savingControlsContext(mode);
+    const pending = box.begin();
+    if (mode === 'local') box.release();
+    assert.equal(await pending, true);
+    assert.ok(box.inspect().snapshots.some(row => row.importDisabled && row.clearDisabled), 'Controls must have rendered while the write was pending.');
+    assert.equal(box.inspect().saving, false);
+    assert.equal(box.inspect().submitDisabled, false);
+    for (const id of ['importData', 'clearData', 'retryCloudBtn', 'localModeBtn']) assert.equal(element(id).disabled, false, `${id} must be available after a confirmed ${mode} save.`);
+    if (mode === 'cloud') assert.equal(element('syncLocalBtn').disabled, false);
+  });
+}
