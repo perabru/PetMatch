@@ -102,7 +102,7 @@ function ui() {
   };
   const context = vm.createContext({
     $: element, activeUser: null, accountLoaded: false, saving: false,
-    authBusy: false, authMode: 'login', cloudInitError: '',
+    authBusy: false, authMode: 'login', cloudInitError: '', cloudStarting: false,
     cloud: Object.fromEntries(['login', 'register', 'loginWithGoogle', 'resetPassword', 'logout'].map(method => [method, async (...args) => { calls.push({ method, args }); }])),
     showError: (_, message) => { element('authError').textContent = message || ''; errors.push(message || ''); },
     showToast() {}

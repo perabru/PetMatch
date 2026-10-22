@@ -34,6 +34,9 @@
   let publicPets = [];
   let inbox = [];
   let cloudInitError = "";
+  let cloudStarting = false;
+  let cloudImportAttempt = 0;
+  let reloadForCloud = false;
   let authBusy = false;
   let authMode = "login";
   const inAccount = () => Boolean(activeUser);
@@ -75,7 +78,7 @@
       if (seen.has(petId)) throw new Error("Há identificadores de pets repetidos.");
       seen.add(petId);
       if (!Number.isInteger(p.age) || p.age < 0 || p.age > 40) throw new Error("Idade inválida no arquivo de dados.");
-      return { id: petId, name: clean(p.name, 80), type: choice(p.type, Object.keys(types)), age: p.age, ageUnit: choice(p.ageUnit, ["anos", "meses"]), size: choice(p.size, Object.keys(sizes)), breed: clean(p.breed, 80, false), city: clean(p.city, 100), purpose: choice(p.purpose, ["amizade", "adocao"]), description: clean(p.description, 1000, false), photo: safePhoto(p.photo), createdAt: dateValue(p.createdAt), updatedAt: dateValue(p.updatedAt) };
+      return { id: petId, name: clean(p.name, 80), type: choice(p.type, Object.keys(types)), age: p.age, ageUnit: choice(p.ageUnit, ["anos", "meses"]), size: choice(p.size, Object.keys(sizes)), breed: clean(p.breed ?? "", 80, false), city: clean(p.city, 100), purpose: choice(p.purpose, ["amizade", "adocao"]), description: clean(p.description ?? "", 1000, false), photo: safePhoto(p.photo), createdAt: dateValue(p.createdAt), updatedAt: dateValue(p.updatedAt) };
     });
     s.favorites = [...new Set(raw.favorites.map(v => clean(v, 100)))];
     const recordIds = new Set();
@@ -85,11 +88,11 @@
       recordIds.add(recordId);
       return { id: recordId, createdAt: dateValue(r.createdAt) };
     };
-    s.interests = raw.interests.map(r => ({ ...baseRecord(r), kind: choice(r.kind, ["amizade", "adocao"]), petId: clean(r.petId, 100), petName: clean(r.petName, 80), name: clean(r.name, 80), message: clean(r.message, 1000, false), status: choice(r.status, ["salvo", "cancelado"]), ...(r.recipientId ? { recipientId: clean(r.recipientId, 128) } : {}) }));
+    s.interests = raw.interests.map(r => ({ ...baseRecord(r), kind: choice(r.kind, ["amizade", "adocao"]), petId: clean(r.petId, 100), petName: clean(r.petName, 80), name: clean(r.name, 80), message: clean(r.message ?? "", 1000, false), status: choice(r.status, ["salvo", "cancelado"]), ...(r.recipientId ? { recipientId: clean(r.recipientId, 128) } : {}) }));
     const activeInterests = s.interests.filter(r => r.status === "salvo").map(r => `${r.kind}:${r.petId}`);
     if (new Set(activeInterests).size !== activeInterests.length) throw new Error("Há interesses ativos repetidos no backup.");
     s.reports = raw.reports.map(r => ({ ...baseRecord(r), type: choice(r.type, reportTypes), city: clean(r.city, 100), location: clean(r.location, 200), description: clean(r.description, 3000) }));
-    s.vetRequests = raw.vetRequests.map(r => ({ ...baseRecord(r), name: clean(r.name, 80), pet: clean(r.pet, 80), city: clean(r.city, 100), service: choice(r.service, ["Vacinação", "Consulta", "Castração", "Outro"]), message: clean(r.message, 1000, false), status: choice(r.status, ["salvo", "cancelado"]) }));
+    s.vetRequests = raw.vetRequests.map(r => ({ ...baseRecord(r), name: clean(r.name, 80), pet: clean(r.pet, 80), city: clean(r.city, 100), service: choice(r.service, ["Vacinação", "Consulta", "Castração", "Outro"]), message: clean(r.message ?? "", 1000, false), status: choice(r.status, ["salvo", "cancelado"]) }));
     return s;
   };
   const notice = message => { $("storageNotice").textContent = message; };
@@ -113,6 +116,7 @@
     const expectedRevision = state.revision;
     const expectedUid = activeUser?.uid || null;
     const commit = () => {
+      if ((activeUser?.uid || null) !== expectedUid) throw new Error("A conta mudou durante o salvamento. Confira os registros antes de tentar novamente.");
       if (damagedData !== null) throw new Error("Os dados locais estão ilegíveis. Exporte a recuperação e restaure um backup válido ou apague os dados para voltar a salvar.");
       const current = localStorage.getItem(STORAGE_KEY);
       const revision = current === null ? 0 : normalize(JSON.parse(current)).revision;
@@ -131,7 +135,7 @@
     };
     try {
       if (expectedUid) {
-        if (!accountLoaded) throw new Error("Aguarde o carregamento dos dados da sua conta antes de salvar.");
+        if (!accountLoaded) throw new Error(unavailableAccountMessage());
         if (!cloud) throw new Error("O serviço de sincronização ainda não está disponível.");
         const result = await cloud.commit(normalize(next), expectedRevision, effects);
         if (activeUser?.uid !== expectedUid) return false;
@@ -262,9 +266,11 @@
       ...state.reports.map(r => ({ date: r.createdAt, card: recordCard(`Ocorrência: ${r.type}`, `${r.city} • ${r.location}`, r, "report") })),
       ...state.vetRequests.map(r => ({ date: r.createdAt, card: recordCard(`Veterinário: ${r.service}`, `${r.pet} • ${r.city}`, r, "vet") }))
     ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-    $("activityList").replaceChildren(...rows.map(r => r.card));
-    $("activityEmpty").hidden = rows.length > 0;
-    $("activityCounts").textContent = `${state.pets.length} pet(s) próprio(s) • ${state.favorites.length} favorito(s) • ${rows.length} registro(s) ${inAccount() ? "na conta" : "local(is)"}`;
+    const waitingForAccount = Boolean(activeUser && !accountLoaded);
+    $("activityList").replaceChildren(...(waitingForAccount ? [] : rows.map(r => r.card)));
+    $("activityEmpty").hidden = !waitingForAccount && rows.length > 0;
+    $("activityEmpty").textContent = waitingForAccount ? "Os registros da sua conta aguardam a sincronização. Nenhum registro vazio foi criado." : "Você ainda não salvou registros. Comece explorando os perfis ou cadastrando seu pet.";
+    $("activityCounts").textContent = waitingForAccount ? "Os registros da conta ainda não foram carregados." : `${state.pets.length} pet(s) próprio(s) • ${state.favorites.length} favorito(s) • ${rows.length} registro(s) ${inAccount() ? "na conta" : "local(is)"}`;
     $("exportData").textContent = damagedData === null ? "Exportar meus dados" : "Exportar dados para recuperação";
   }
   function showError(target, message = "") { const field = typeof target === "string" ? $(target) : target; field.textContent = message; field.hidden = !message; }
@@ -591,6 +597,7 @@
   ];
   document.querySelectorAll(".campaign-more").forEach((button, index) => button.addEventListener("click", () => openModal(...campaignTexts[index])));
   $("exportData").addEventListener("click", () => {
+    if (activeUser && !accountLoaded) return showToast(unavailableAccountMessage());
     const recovery = damagedData !== null;
     const data = recovery ? damagedData : JSON.stringify({ app: "PetMatch", exportedAt: now(), data: state }, null, 2);
     download(data, `PetMatch-${recovery ? "recuperacao" : "backup"}-${new Date().toISOString().slice(0, 10)}.${recovery ? "txt" : "json"}`, recovery ? "text/plain;charset=utf-8" : "application/json");
@@ -612,9 +619,13 @@
   $("importData").addEventListener("change", async event => {
     const file = event.target.files[0]; showError("importError");
     if (!file) return;
+    if (activeUser && !accountLoaded) { event.target.value = ""; return showError("importError", unavailableAccountMessage()); }
+    const selectedUid = activeUser?.uid || null;
     try {
       if (file.size > MAX_BACKUP_BYTES) throw new Error("O backup deve ter no máximo 8 MB.");
-      const backup = JSON.parse(await file.text());
+      const text = await file.text();
+      if ((activeUser?.uid || null) !== selectedUid) throw new Error("A conta mudou durante a leitura do arquivo. Escolha o backup novamente na conta correta.");
+      const backup = JSON.parse(text);
       if (backup.app !== "PetMatch") throw new Error("Selecione um backup JSON exportado pelo PetMatch.");
       const imported = restoreSafeState(backup.data);
       const expectedUid = activeUser?.uid || null;
@@ -629,6 +640,7 @@
         }
         try {
           await withStorageLock(() => {
+            if ((activeUser?.uid || null) !== expectedUid) throw new Error("session-changed");
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw !== expectedRaw) throw new Error("changed");
             let revision = 0;
@@ -639,12 +651,13 @@
             notice("Backup restaurado neste navegador. Nenhum dado é enviado a serviços externos.");
             render(); closeModal(); showToast("Backup restaurado com sucesso.");
           });
-        } catch (error) { showError("modalError", error.message === "changed" ? "Os dados mudaram em outra guia. Feche esta janela, exporte os dados atuais e selecione o backup novamente." : "Não foi possível restaurar: o armazenamento está bloqueado ou sem espaço. Os dados anteriores foram preservados."); }
+        } catch (error) { showError("modalError", error.message === "session-changed" ? "A conta mudou. Selecione o backup novamente na conta correta." : error.message === "changed" ? "Os dados mudaram em outra guia. Feche esta janela, exporte os dados atuais e selecione o backup novamente." : "Não foi possível restaurar: o armazenamento está bloqueado ou sem espaço. Os dados anteriores foram preservados."); }
       });
     } catch (error) { showError("importError", `Backup não importado. ${error instanceof SyntaxError ? "O arquivo não é um JSON válido." : error.message}`); }
     finally { event.target.value = ""; }
   });
   $("clearData").addEventListener("click", () => {
+    if (activeUser && !accountLoaded) return showToast(unavailableAccountMessage());
     const expectedUid = activeUser?.uid || null;
     const expectedRevision = state.revision;
     let expectedRaw;
@@ -658,6 +671,7 @@
       }
       try {
         await withStorageLock(() => {
+          if ((activeUser?.uid || null) !== expectedUid) throw new Error("session-changed");
           if (localStorage.getItem(STORAGE_KEY) !== expectedRaw) throw new Error("changed");
           let previousRevision = state.revision;
           try { previousRevision = expectedRaw === null ? 0 : normalize(JSON.parse(expectedRaw)).revision; } catch { /* Recuperação confirmada de conteúdo ilegível. */ }
@@ -667,7 +681,7 @@
           notice("Dados locais apagados. Os perfis de exemplo continuam disponíveis.");
           render(); closeModal(); showToast("Dados deste navegador apagados.");
         });
-      } catch (error) { showError("modalError", error.message === "changed" ? "Os dados mudaram em outra guia. Feche esta janela e confira os registros antes de tentar novamente." : "Não foi possível apagar os dados. O armazenamento pode estar bloqueado."); }
+      } catch (error) { showError("modalError", error.message === "session-changed" ? "A conta mudou. Confira os registros da conta atual antes de continuar." : error.message === "changed" ? "Os dados mudaram em outra guia. Feche esta janela e confira os registros antes de tentar novamente." : "Não foi possível apagar os dados. O armazenamento pode estar bloqueado."); }
     });
   });
   $("menuBtn").addEventListener("click", () => {
@@ -700,21 +714,35 @@
     } catch { notice("Os dados mudaram em outra guia e não puderam ser lidos. Recarregue a página para recuperar os registros."); }
   });
   function renderAccount() {
-    $("authStatus").textContent = activeUser ? `Conectado como ${activeUser.displayName || activeUser.email || "tutor"}.${accountLoaded ? " Seus registros estão na sua conta." : " Carregando seus registros…"}` : "Você está usando o modo local. Os dados ficam somente neste navegador.";
-    $("authForm").hidden = Boolean(activeUser);
-    $("authOptions").hidden = Boolean(activeUser);
-    $("logoutBtn").hidden = !activeUser;
-    $("syncLocalBtn").hidden = !activeUser;
+    const connectedUser = Boolean(activeUser);
+    const waiting = connectedUser && !accountLoaded;
+    const syncUnavailable = cloud?.syncAllowed === false;
+    $("authStatus").textContent = activeUser ? `Conectado como ${activeUser.displayName || activeUser.email || "tutor"}.${accountLoaded ? " Seus registros estão na sua conta." : syncUnavailable ? " A sincronização está indisponível. Você pode sair e usar sem conta." : " Carregando seus registros…"}` : "Você está usando o modo local. Os dados ficam somente neste navegador.";
+    $("authForm").hidden = connectedUser;
+    $("authOptions").hidden = connectedUser;
+    $("logoutBtn").hidden = !connectedUser;
+    $("syncLocalBtn").hidden = !connectedUser;
     $("syncLocalBtn").disabled = !accountLoaded || saving;
-    $("localModeBtn").hidden = Boolean(activeUser);
+    $("localModeBtn").hidden = connectedUser && accountLoaded;
+    $("localModeBtn").textContent = connectedUser ? "Sair e usar sem conta" : "Usar sem conta";
+    $("localModeBtn").disabled = authBusy || saving;
+    $("exportData").disabled = waiting;
+    $("importData").disabled = waiting || saving;
+    $("clearData").disabled = waiting || saving;
     $("clearData").textContent = activeUser ? "Apagar meus registros da conta" : "Apagar dados deste navegador";
+    $("syncInfo").textContent = waiting ? "Aguarde a sincronização antes de importar, exportar ou apagar os registros da conta. Seus dados locais continuam separados e podem ser usados ao sair da conta." : "Importar dados locais para a conta publica os perfis dos seus pets para outros tutores. Ocorrências e anotações de atendimento continuam privadas e não são encaminhadas a terceiros.";
+    $("retryCloudBtn").disabled = cloudStarting || saving || authBusy;
+  }
+  function unavailableAccountMessage() {
+    const reason = cloud?.securityError;
+    return reason?.message || (typeof reason === "string" ? reason : "Os registros da conta ainda não estão disponíveis. Aguarde a sincronização ou saia para usar sem conta.");
   }
   function renderInbox() {
     const statusLabels = { pendente: "Aguardando sua resposta", aceito: "Interesse aceito", recusado: "Interesse recusado", cancelado: "Cancelado pelo remetente" };
-    const rows = activeUser ? inbox.slice().sort((a,b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) : [];
+    const rows = activeUser && accountLoaded ? inbox.slice().sort((a,b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)) : [];
     $("inboxCount").textContent = rows.filter(record => record.status === "pendente").length;
     $("inboxEmpty").hidden = rows.length > 0;
-    $("inboxEmpty").textContent = activeUser ? "Nenhum interesse recebido pelos seus pets até agora." : "Entre na sua conta para acompanhar os interesses recebidos pelos seus pets.";
+    $("inboxEmpty").textContent = activeUser && !accountLoaded ? "A caixa de entrada estará disponível quando a sincronização estiver pronta." : activeUser ? "Nenhum interesse recebido pelos seus pets até agora." : "Entre na sua conta para acompanhar os interesses recebidos pelos seus pets.";
     $("inboxList").replaceChildren(...rows.map(record => {
       const card = el("article", "record-card"); card.dataset.inboxId = record.id;
       card.append(el("span", "status-badge", statusLabels[record.status] || "Interesse recebido"), el("h3", "", `${record.name} quer conhecer ${record.petName}`), el("p", "", record.message || "Sem mensagem adicional."), el("small", "muted", new Date(record.createdAt).toLocaleString("pt-BR")));
@@ -800,9 +828,13 @@
   setAuthMode("login");
   $("resetPasswordBtn").addEventListener("click", () => authAction("reset"));
   $("logoutBtn").addEventListener("click", () => authAction("logout"));
-  $("localModeBtn").addEventListener("click", () => { showError("authError"); showToast("Modo local selecionado. Seus dados continuam neste navegador."); $("match").scrollIntoView({ behavior: "smooth" }); });
+  $("localModeBtn").addEventListener("click", async () => {
+    if (activeUser) await authAction("logout");
+    if (activeUser) return;
+    showError("authError"); showToast("Modo local selecionado. Seus dados continuam neste navegador."); $("match").scrollIntoView({ behavior: "smooth" });
+  });
   $("syncLocalBtn").addEventListener("click", () => {
-    if (!activeUser || !accountLoaded) return showToast("Aguarde o carregamento da sua conta.");
+    if (!activeUser || !accountLoaded) return showToast(activeUser ? unavailableAccountMessage() : "Entre na sua conta para importar seus dados locais.");
     let local;
     try { const raw = localStorage.getItem(STORAGE_KEY); local = raw === null ? emptyState() : restoreSafeState(JSON.parse(raw)); }
     catch { return showToast("Os dados locais não puderam ser lidos. Exporte uma recuperação no modo local antes de continuar."); }
@@ -828,16 +860,37 @@
       else { event.target.checked = true; throw new Error("Recarregue a página para encerrar as métricas desta sessão. Elas iniciam desativadas em cada abertura."); }
     } catch (error) { if (enabled) event.target.checked = false; showToast(error.message); }
   });
+  function renderConnection(status = {}) {
+    const authReady = cloud?.authReady === true;
+    $("connectionStatus").textContent = authReady ? "Serviço de contas carregado." : cloudInitError || "Carregando o serviço de contas…";
+    $("connectionStatus").dataset.phase = authReady ? "ready" : cloudInitError ? "error" : "loading";
+    $("databaseStatus").textContent = status.message || "Verificando a sincronização dos registros…";
+    $("databaseStatus").dataset.phase = status.phase || "loading";
+    $("retryCloudBtn").hidden = location.protocol === "file:" || !["error", "blocked", "offline"].includes(status.phase);
+    $("retryCloudBtn").textContent = reloadForCloud ? "Recarregar página" : "Tentar conexão novamente";
+    renderAccount();
+  }
   async function startCloud() {
-    if (location.protocol === "file:") { cloudInitError = "Para conectar a conta, abra o site pelo GitHub Pages ou pelo servidor local. A abertura direta pelo arquivo mantém o modo local."; $("connectionStatus").textContent = cloudInitError; return; }
+    if (cloudStarting) return;
+    if (location.protocol === "file:") {
+      cloudInitError = "Abra o site pelo GitHub Pages ou pelo servidor local para conectar sua conta.";
+      $("connectionStatus").textContent = cloudInitError;
+      $("databaseStatus").textContent = "O modo local está disponível nesta abertura por arquivo.";
+      $("retryCloudBtn").hidden = true;
+      return;
+    }
+    cloudStarting = true; cloudInitError = ""; reloadForCloud = false; renderConnection({ phase: "loading", message: "Preparando a sincronização dos registros…" });
     try {
-      ({ cloud } = await import("./firebase-service.js"));
+      ++cloudImportAttempt;
+      const serviceURL = cloudImportAttempt === 1 ? "./firebase-service.js?v=20261022a" : `./firebase-service.js?v=20261022a&retry=${cloudImportAttempt}`;
+      ({ cloud } = await import(serviceURL));
       await cloud.init({
         onAuth: switchAccount,
         onState: data => {
-          if (!activeUser || data === null) return;
+          if (!activeUser) return;
+          if (data === null) { accountLoaded = false; state = emptyState(); inbox = []; render(); return; }
           try { state = normalize(data); accountLoaded = true; damagedData = null; render(); }
-          catch { accountLoaded = false; notice("Os dados da conta não puderam ser lidos. Nenhum dado foi substituído. Verifique as regras e o formato do banco."); }
+          catch { accountLoaded = false; notice("Os dados da conta não puderam ser lidos. Nenhum dado foi substituído. Verifique as regras e o formato do banco."); renderAccount(); }
         },
         onPets: list => {
           publicPets = (Array.isArray(list) ? list : []).slice(0,1000).flatMap(pet => {
@@ -845,12 +898,26 @@
           }); render();
         },
         onInbox: list => { if (!activeUser) return; inbox = (Array.isArray(list) ? list : []).filter(record => record && typeof record.id === "string" && record.recipientId === activeUser.uid); renderInbox(); },
-        onStatus: status => { $("connectionStatus").textContent = status.message || "Verificando conexão…"; $("connectionStatus").dataset.phase = status.phase || "loading"; },
-        onError: error => { $("connectionStatus").textContent = error.message; if (activeUser) showToast(error.message); }
+        onStatus: renderConnection,
+        onError: error => { renderConnection({ phase: ["unsafe-rules", "security-check-failed"].includes(error.code) ? "blocked" : "error", message: error.message }); if (activeUser) showToast(error.message); }
       });
       cloudInitError = "";
-    } catch (error) { cloudInitError = error.message || "Não foi possível carregar a conexão. O modo local continua disponível."; $("connectionStatus").textContent = cloudInitError; }
+    } catch (error) {
+      reloadForCloud = error.code === "sdk-unavailable";
+      cloudInitError = error.code ? error.message : "Não foi possível carregar o serviço de contas. Confira a conexão e tente novamente. Os registros locais foram preservados.";
+      if (reloadForCloud) cloudInitError += " Use Recarregar página para tentar baixar os componentes novamente.";
+      renderConnection({ phase: "error", message: cloudInitError });
+    } finally { cloudStarting = false; renderAccount(); }
   }
+  $("retryCloudBtn").addEventListener("click", async () => {
+    if (cloudStarting || saving || authBusy) return;
+    if (reloadForCloud) { location.reload(); return; }
+    if (!cloud?.authReady) return startCloud();
+    cloudStarting = true; renderAccount();
+    try { await cloud.retrySync(); }
+    catch (error) { renderConnection({ phase: "error", message: error.message }); }
+    finally { cloudStarting = false; renderAccount(); }
+  });
   $("year").textContent = new Date().getFullYear();
   document.querySelectorAll(".reveal").forEach(node => node.classList.add("visible"));
   readInitialState(); setFilter("todos"); render();

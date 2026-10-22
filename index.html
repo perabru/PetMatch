@@ -6,7 +6,7 @@
   <meta name="description" content="PetMatch: organize perfis de pets, amizades, interesses em adoção e cuidados com os animais." />
   <meta name="theme-color" content="#ef4b4f" />
   <title>PetMatch | O match perfeito para o seu pet</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20261022a" />
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
@@ -20,7 +20,7 @@
       </nav>
     </div>
   </header>
-  <main id="conteudo">
+  <main id="conteudo" tabindex="-1">
     <section class="hero" aria-labelledby="heroTitle">
       <div class="container hero-grid">
         <div class="hero-copy reveal">
@@ -49,7 +49,7 @@
     </section>
     <section class="section account-section" id="conta" aria-labelledby="accountTitle">
       <div class="container account-layout">
-        <div class="account-copy"><span class="eyebrow">SEU ESPAÇO NO PETMATCH</span><h2 id="accountTitle">Conecte sua conta.<br>Leve seus pets com você.</h2><p>Entre para sincronizar seus registros e receber interesses de outros tutores. Se preferir, explore sem conta e salve seus dados apenas neste navegador.</p><div class="account-benefits"><span>Perfis dos seus pets</span><span>Interesses recebidos</span><span>Registros na sua conta</span></div><p class="connection-status" id="connectionStatus" role="status">Verificando a conexão com o serviço de contas…</p></div>
+        <div class="account-copy"><span class="eyebrow">SEU ESPAÇO NO PETMATCH</span><h2 id="accountTitle">Conecte sua conta.<br>Leve seus pets com você.</h2><p>Entre para sincronizar seus registros e receber interesses de outros tutores. Se preferir, explore sem conta e salve seus dados apenas neste navegador.</p><div class="account-benefits"><span>Perfis dos seus pets</span><span>Interesses recebidos</span><span>Registros na sua conta</span></div><div class="connection-panel" aria-label="Estado da conexão"><p class="connection-status" id="connectionStatus" role="status" data-phase="loading">Verificando o serviço de contas…</p><p class="connection-status" id="databaseStatus" role="status" data-phase="idle">A sincronização será verificada após entrar.</p><button id="retryCloudBtn" class="btn btn-ghost" type="button" hidden>Tentar conexão novamente</button></div></div>
         <div class="account-card">
           <p class="auth-status" id="authStatus" role="status">Você está usando o modo local.</p>
           <div id="authOptions">
@@ -66,15 +66,15 @@
             <p class="google-note">Use seu Gmail ou outra conta Google. No primeiro acesso, sua conta PetMatch é criada automaticamente.</p>
             <div class="auth-divider"><span>ou continue com e-mail</span></div>
             <form id="authForm" class="auth-form" aria-labelledby="authFormTitle">
-              <label id="authNameField" for="authName" hidden>Seu nome<input id="authName" name="displayName" type="text" autocomplete="name" maxlength="80" placeholder="Como você quer ser chamado?" /></label>
-              <label for="authEmail">E-mail<input id="authEmail" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="voce@exemplo.com" /></label>
-              <label for="authPassword">Senha<span class="password-control"><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required placeholder="Sua senha" /><button id="togglePasswordBtn" type="button" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></span></label>
-              <label id="authConfirmField" for="authConfirmPassword" hidden>Confirme sua senha<input id="authConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" placeholder="Repita a senha" /></label>
-              <p id="authError" class="form-error" role="alert" hidden></p>
+              <label id="authNameField" for="authName" hidden>Seu nome<input id="authName" aria-describedby="authError" name="displayName" type="text" autocomplete="name" maxlength="80" placeholder="Como você quer ser chamado?" /></label>
+              <label for="authEmail">E-mail<input id="authEmail" aria-describedby="authError" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="voce@exemplo.com" /></label>
+              <label for="authPassword">Senha<span class="password-control"><input id="authPassword" aria-describedby="authError" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required placeholder="Sua senha" /><button id="togglePasswordBtn" type="button" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></span></label>
+              <label id="authConfirmField" for="authConfirmPassword" hidden>Confirme sua senha<input id="authConfirmPassword" aria-describedby="authError" name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" placeholder="Repita a senha" /></label>
               <div class="auth-actions"><button id="loginBtn" class="btn btn-primary" type="submit">Entrar com e-mail</button><button id="registerBtn" class="btn btn-primary" type="submit" hidden>Criar minha conta</button></div>
               <button id="resetPasswordBtn" class="text-btn" type="button">Esqueci minha senha</button>
             </form>
           </div>
+          <p id="authError" class="form-error auth-feedback" role="alert" hidden></p>
           <div class="account-mode-actions"><button id="logoutBtn" class="btn btn-ghost" type="button" hidden>Sair da conta</button><button id="localModeBtn" class="text-btn" type="button">Usar sem conta</button></div>
           <div class="account-sync"><p class="form-hint" id="syncInfo">Importar dados locais para a conta publica os perfis dos seus pets para outros tutores. Ocorrências e anotações de atendimento continuam privadas e não são encaminhadas a terceiros.</p><button id="syncLocalBtn" class="btn btn-ghost" type="button" hidden>Importar meus dados locais para minha conta</button></div>
           <label class="consent-label" for="analyticsConsent"><input id="analyticsConsent" type="checkbox" /><span>Permitir métricas opcionais de uso.<small>Você pode mudar essa escolha quando quiser. Ela não é necessária para usar o PetMatch.</small></span></label>
@@ -156,6 +156,6 @@
   <footer class="footer"><div class="container footer-grid"><div><a class="brand footer-brand" href="#inicio"><span class="brand-mark">P</span><span>Pet<span>Match</span><b>.</b></span></a><p>Conexões, adoção e proteção animal em um só lugar.</p></div><div class="footer-links"><a href="#match">Match</a><a href="#adocao">Adoção</a><a href="#veterinario">Veterinário</a><a href="#atividade">Meus registros</a></div></div><div class="container footer-bottom"><span>© <span id="year"></span> PetMatch. Conexões que fazem bem.</span><span>Feito com ❤️ pelos pets.</span></div></footer>
   <div class="modal" id="modal" aria-hidden="true"><div class="modal-backdrop" data-close="true"></div><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText" tabindex="-1"><button class="modal-close" id="modalClose" aria-label="Fechar" type="button">×</button><div class="modal-icon" aria-hidden="true">🐾</div><h3 id="modalTitle">PetMatch</h3><p id="modalText"></p><div id="modalBody"></div><p id="modalError" class="form-error" role="alert" hidden></p><div id="modalActions"></div><button class="btn btn-primary" id="modalOk" type="button">Continuar</button></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="script.js"></script>
+  <script src="script.js?v=20261022a"></script>
 </body>
 </html>

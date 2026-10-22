@@ -1225,3 +1225,26 @@ button:disabled { cursor: wait; opacity: .6; transform: none; }
   .account-benefits { gap: 7px; }
   .account-benefits span { font-size: .69rem; padding: 6px 9px; }
 }
+
+/* Connection recovery and accessible action targets. */
+.btn-primary { background: #c9343a; }
+.btn-primary:hover { background: #b12b31; }
+.btn-outline, .btn-light, .eyebrow:not(.light), .text-btn { color: #b93138; }
+.btn, .filter, .text-btn { min-height: 44px; }
+.text-btn { padding-top: 8px; padding-bottom: 8px; }
+.heart-btn { width: 44px; height: 44px; }
+.modal-close { min-width: 44px; min-height: 44px; }
+.password-control button { top: 2px; bottom: 2px; min-width: 64px; min-height: 44px; }
+.auth-form .password-control input { min-height: 48px; }
+.footer-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.auth-feedback { margin-top: 16px; }
+.connection-panel { margin-top: 24px; max-width: 470px; }
+.connection-panel .connection-status { margin: 0 0 9px; padding: 10px 13px; border-left: 3px solid #bdaea7; border-radius: 0 10px 10px 0; background: #fffaf7; color: #60554f; font-size: .83rem; line-height: 1.55; }
+.connection-status[data-phase="ready"] { color: #285e3b; border-color: #518968; background: #f0f8f2; }
+.connection-status[data-phase="blocked"], .connection-status[data-phase="error"] { color: #9f2931; border-color: #c9343a; background: #fff1ee; }
+.connection-status[data-phase="offline"] { color: #66543c; border-color: #aa844a; background: #fff8e9; }
+.connection-panel .btn { margin-top: 4px; padding: 10px 15px; font-size: .83rem; }
+@media (max-width: 640px) { .connection-panel { max-width: none; } }
+
+.consent-label small { color: #726862; }
+.mascot-side-note { color: #8b5e4a; }

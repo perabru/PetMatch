@@ -27,6 +27,7 @@ jobs:
         run: |
           node --check script.js
           node --input-type=module --check < firebase-service.js
+          node --test tests/*.mjs
       - name: Preparar os arquivos públicos
         run: |
           mkdir -p _site/assets

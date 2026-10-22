@@ -69,7 +69,7 @@ export function explainFirebaseError(original) {
     "disconnected": "A conexão com o Firebase caiu. Mantenha a página aberta para acompanhar a confirmação.",
     "network_error": "Não foi possível alcançar o Firebase. Confira a conexão e tente novamente."
   };
-  const own = ["not-ready", "not-authenticated", "offline", "busy", "conflict", "invalid-data", "invalid-interest", "not-found", "sdk-unavailable", "session-changed", "unsafe-rules", "security-check-failed"].includes(code);
+  const own = ["not-ready", "not-authenticated", "offline", "busy", "conflict", "invalid-data", "invalid-interest", "not-found", "sdk-unavailable", "session-changed", "unsafe-rules", "security-check-failed", "profile-update-failed"].includes(code);
   const message = descriptions[code] || (own ? original.message : "Não foi possível concluir a operação no Firebase. Confira a conexão, o Authentication e as regras do banco.");
   const result = serviceError(code || "firebase-error", message, original);
   result.petmatchMapped = true;
@@ -82,7 +82,8 @@ const defaultLoader = () => Promise.all([
 ]);
 
 /**
- * Fail closed before Auth can restore a session or Database can attach listeners.
+ * Fail closed before Database can attach listeners or read/write account data.
+ * Authentication is independent and can remain usable while synchronization is blocked.
  * This checks an intentionally nonexistent sentinel only; it never downloads an
  * actual user's private state. A readable sentinel proves the private namespace
  * is open. Denial is a prerequisite, not a substitute for deploying the rules.
@@ -101,7 +102,7 @@ export async function verifyDatabaseSecurity({ fetchImpl = globalThis.fetch } = 
     throw serviceError("security-check-failed", "Não foi possível verificar a proteção do banco. Confira a conexão e as regras do Firebase antes de sincronizar. O modo local continua disponível.", error);
   } finally { clearTimeout(timer); }
   if (response.status === 401 || response.status === 403) return true;
-  if (response.status === 200) throw serviceError("unsafe-rules", "A sincronização foi bloqueada porque o banco permite leitura sem login na área privada. Publique as regras de proteção de petmatchV1 no Firebase antes de conectar contas. Seus dados locais foram preservados.");
+  if (response.status === 200) throw serviceError("unsafe-rules", "A sincronização foi bloqueada porque o banco permite leitura sem login na área privada. Publique as regras de proteção de petmatchV1 no Firebase antes de sincronizar registros. Você pode acessar sua conta; seus registros não serão carregados nem enviados enquanto a proteção estiver pendente.");
   throw serviceError("security-check-failed", `Não foi possível confirmar a proteção do Firebase (resposta ${response.status}). A sincronização está bloqueada e o modo local continua disponível.`);
 }
 
@@ -111,16 +112,24 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
   let callbacks = {};
   let initialized = false;
   let initPromise;
+  let syncPromise;
+  let syncAllowed = false;
+  let securityFailure = null;
+  let lifecycle = 0;
+  let syncEpoch = 0;
   let sessionUser = null;
   let stateLoaded = false;
   let privateState = emptyState();
   let connected = false;
   let generation = 0;
+  let authGeneration = 0;
   let writing = false;
   let destroyed = false;
   let analytics;
   let analyticsSdk;
+  let analyticsGeneration = 0;
   let globalOff = [];
+  let syncOff = [];
   let userOff = [];
   const buffered = new Map();
   const publicUser = user => user ? { uid: user.uid, email: user.email || "", displayName: user.displayName || "" } : null;
@@ -128,8 +137,8 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
     if (destroyed) return;
     try { callbacks[name]?.(payload); } catch { /* UI callback errors cannot change a confirmed database operation. */ }
   };
-  const ready = () => initialized && (!sessionUser || stateLoaded);
-  const status = (phase, message) => emit("onStatus", { phase, message, connected, ready: ready(), pending: writing });
+  const ready = () => initialized && syncAllowed && (!sessionUser || stateLoaded);
+  const status = (phase, message, code = securityFailure?.code || null) => emit("onStatus", { phase, message, code, connected, ready: ready(), authReady: initialized, syncAllowed, pending: writing });
   const emitData = (name, payload) => { if (writing) buffered.set(name, payload); else emit(name, payload); };
   const flush = () => { for (const [name, payload] of buffered) emit(name, payload); buffered.clear(); };
   const mapThrow = original => { throw explainFirebaseError(original); };
@@ -137,6 +146,7 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
   const statePath = uid => `${ROOT}/users/${uid}/state`;
   const requireSession = () => {
     if (!initialized) throw serviceError("not-ready", "A conexão com o Firebase ainda não está pronta.");
+    if (!syncAllowed) throw securityFailure || serviceError("not-ready", "A sincronização ainda não está liberada. Sua conta pode entrar, mas os registros aguardam a verificação das regras do banco.");
     if (!sessionUser) throw serviceError("not-authenticated", "Entre na sua conta para sincronizar os dados.");
     if (!stateLoaded) throw serviceError("not-ready", "Aguarde o carregamento dos dados da sua conta.");
     if (!connected) throw serviceError("offline", "O Firebase está desconectado. O formulário foi preservado; tente salvar quando a conexão voltar.");
@@ -149,19 +159,21 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
   };
   const listenFailure = error => { const mapped = explainFirebaseError(error); status("error", mapped.message); emit("onError", mapped); };
   const unsubscribeUser = () => { userOff.forEach(off => off()); userOff = []; buffered.clear(); };
-  const subscribeUser = user => {
+  const attachUserData = user => {
     const activeGeneration = ++generation;
     unsubscribeUser();
-    sessionUser = user;
     stateLoaded = false;
     privateState = emptyState();
-    emit("onAuth", publicUser(user));
     emit("onState", null);
     emit("onInbox", []);
+    if (!syncAllowed) {
+      status(securityFailure ? "blocked" : "loading", securityFailure?.message || "A conta está disponível. A sincronização aguarda a verificação de proteção do banco.");
+      return;
+    }
     if (!user) { status(connected ? "ready" : "offline", "Explore os perfis ou entre na sua conta para sincronizar."); return; }
     status("loading", "Carregando os dados da sua conta…");
     userOff.push(dbSdk.onValue(ref(statePath(user.uid)), snapshot => {
-      if (activeGeneration !== generation) return;
+      if (activeGeneration !== generation || !syncAllowed) return;
       try {
         privateState = hydrateState(snapshot.val());
         stateLoaded = true;
@@ -170,11 +182,26 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
       } catch (error) { stateLoaded = false; listenFailure(error); }
     }, error => { if (activeGeneration === generation) { stateLoaded = false; listenFailure(error); } }));
     userOff.push(dbSdk.onValue(ref(`${ROOT}/inbox/${user.uid}`), snapshot => {
-      if (activeGeneration !== generation) return;
+      if (activeGeneration !== generation || !syncAllowed) return;
       const records = snapshot.val() || {};
       emitData("onInbox", Object.entries(records).map(([id, value]) => ({ ...value, id })).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
     }, error => { if (activeGeneration === generation) listenFailure(error); }));
   };
+  const subscribeUser = user => {
+    if ((sessionUser?.uid || null) !== (user?.uid || null)) ++authGeneration;
+    sessionUser = user;
+    emit("onAuth", publicUser(user));
+    attachUserData(user);
+  };
+  function stopDatabase() {
+    ++syncEpoch; ++generation;
+    syncAllowed = false; connected = false; stateLoaded = false;
+    unsubscribeUser();
+    syncOff.forEach(off => off()); syncOff = [];
+    privateState = emptyState();
+    if (db && typeof dbSdk?.goOffline === "function") dbSdk.goOffline(db);
+    emit("onState", null); emit("onInbox", []); emit("onPets", []);
+  }
   async function write(label, perform) {
     if (writing) throw explainFirebaseError(serviceError("busy", "Aguarde a confirmação do salvamento em andamento."));
     writing = true;
@@ -215,50 +242,97 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
     get ready() { return ready(); },
     get connected() { return connected; },
     get pending() { return writing; },
+    get authReady() { return initialized; },
+    get syncAllowed() { return syncAllowed; },
+    get securityError() { return securityFailure; },
     async init(nextCallbacks = {}) {
       callbacks = nextCallbacks;
-      destroyed = false;
       if (initPromise) return initPromise;
-      status("loading", "Verificando a proteção do banco Firebase…");
+      destroyed = false;
+      const attemptLifecycle = ++lifecycle;
+      status("loading", "Preparando o acesso à sua conta…");
       initPromise = (async () => {
         try {
-          await checkSecurity();
-          [appSdk, authSdk, dbSdk] = await loadSdk();
+          [appSdk, authSdk, dbSdk] = await Promise.resolve().then(loadSdk);
+          if (destroyed || attemptLifecycle !== lifecycle) throw serviceError("session-changed", "A conexão foi encerrada. Tente conectar novamente.");
           app = appSdk.getApps().find(value => value.name === "petmatch") || appSdk.initializeApp(firebaseConfig, "petmatch");
           auth = authSdk.getAuth(app);
-          db = dbSdk.getDatabase(app);
           try { await authSdk.setPersistence(auth, authSdk.browserLocalPersistence); }
           catch { await authSdk.setPersistence(auth, authSdk.inMemoryPersistence); }
+          if (destroyed || attemptLifecycle !== lifecycle) throw serviceError("session-changed", "A conexão foi encerrada. Tente conectar novamente.");
           initialized = true;
-          globalOff.push(dbSdk.onValue(ref(".info/connected"), snapshot => {
+          globalOff.push(authSdk.onAuthStateChanged(auth, subscribeUser, listenFailure));
+          await api.retrySync();
+          return api;
+        } catch (error) {
+          const mapped = explainFirebaseError(error.code === "session-changed" ? error : serviceError("sdk-unavailable", "Não foi possível carregar o acesso à conta. O modo local continua disponível; confira a internet e tente conectar novamente.", error));
+          if (attemptLifecycle === lifecycle && !destroyed) {
+            initialized = false;
+            stopDatabase(); globalOff.forEach(off => off()); globalOff = [];
+            sessionUser = null; emit("onAuth", null);
+            initPromise = null;
+            status("error", mapped.message, mapped.code); emit("onError", mapped);
+          }
+          throw mapped;
+        }
+      })();
+      return initPromise;
+    },
+    async retrySync() {
+      if (!initialized) return api.init(callbacks);
+      if (writing) throw explainFirebaseError(serviceError("busy", "Aguarde a confirmação do salvamento antes de verificar a conexão novamente."));
+      if (syncPromise) return syncPromise;
+      stopDatabase();
+      securityFailure = null;
+      const attemptLifecycle = lifecycle, attemptEpoch = syncEpoch;
+      status("loading", "Verificando a proteção do banco Firebase…");
+      syncPromise = (async () => {
+        try {
+          if (await checkSecurity() !== true) throw serviceError("security-check-failed", "Não foi possível confirmar a proteção do banco. A sincronização permanece bloqueada.");
+          if (destroyed || attemptLifecycle !== lifecycle || attemptEpoch !== syncEpoch) return api;
+          // Database is never initialized or resumed until the guard accepts.
+          db = db || dbSdk.getDatabase(app);
+          if (typeof dbSdk.goOnline === "function") dbSdk.goOnline(db);
+          syncAllowed = true;
+          syncOff.push(dbSdk.onValue(ref(".info/connected"), snapshot => {
+            if (attemptEpoch !== syncEpoch || !syncAllowed) return;
             connected = snapshot.val() === true;
             if (!writing) status(connected ? (ready() ? "ready" : "loading") : "offline", connected ? "Conexão com o Firebase estabelecida." : "Sem conexão com o Firebase. Novos salvamentos aguardam a reconexão.");
           }));
-          globalOff.push(dbSdk.onValue(ref(`${ROOT}/publicPets`), snapshot => {
+          syncOff.push(dbSdk.onValue(ref(`${ROOT}/publicPets`), snapshot => {
+            if (attemptEpoch !== syncEpoch || !syncAllowed) return;
             const raw = snapshot.val() || {};
             const list = Object.entries(raw).filter(([, value]) => value && typeof value === "object").map(([id, value]) => ({ ...value, id }));
             emitData("onPets", list);
           }, listenFailure));
-          globalOff.push(authSdk.onAuthStateChanged(auth, subscribeUser, listenFailure));
-          return api;
+          attachUserData(sessionUser);
         } catch (error) {
-          initialized = false;
-          const mapped = explainFirebaseError(["unsafe-rules", "security-check-failed"].includes(error.code) ? error : serviceError("sdk-unavailable", "Não foi possível carregar o Firebase. O modo local continua disponível; confira a internet e tente recarregar a página.", error));
-          status("error", mapped.message); emit("onError", mapped);
-          throw mapped;
+          if (destroyed || attemptLifecycle !== lifecycle || attemptEpoch !== syncEpoch) return api;
+          stopDatabase();
+          securityFailure = explainFirebaseError(error);
+          status("blocked", securityFailure.message, securityFailure.code);
+          emit("onError", securityFailure);
         }
+        return api;
       })();
-      // Rejection is observable by the caller; the app can keep its local mode.
-      return initPromise;
+      try { return await syncPromise; }
+      finally { if (attemptLifecycle === lifecycle) syncPromise = null; }
     },
     async register(email, password, name = "") {
       try {
         requireAuthReady();
         const result = await authSdk.createUserWithEmailAndPassword(auth, String(email).trim(), password);
+        const accountGeneration = authGeneration;
+        const sameAccount = () => authGeneration === accountGeneration && (auth && "currentUser" in auth ? auth.currentUser?.uid : sessionUser?.uid) === result.user.uid;
         if (String(name).trim()) {
-          await authSdk.updateProfile(result.user, { displayName: String(name).trim().slice(0, 80) });
-          emit("onAuth", publicUser(result.user));
+          try { await authSdk.updateProfile(result.user, { displayName: String(name).trim().slice(0, 80) }); }
+          catch (error) {
+            if (!sameAccount()) throw serviceError("session-changed", "A conta mudou durante o cadastro. Confira a sessão atual antes de continuar.");
+            emit("onError", explainFirebaseError(serviceError("profile-update-failed", "Sua conta foi criada, mas não foi possível salvar o nome do perfil. Você já pode entrar com seu e-mail e senha.", error)));
+          }
         }
+        if (!sameAccount()) throw serviceError("session-changed", "A conta mudou durante o cadastro. Confira a sessão atual antes de continuar.");
+        emit("onAuth", publicUser(sessionUser || result.user));
         return publicUser(result.user);
       } catch (error) { mapThrow(error); }
     },
@@ -371,11 +445,12 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
       return write("Enviando interesse ao tutor.", () => dbSdk.update(ref(""), { [`${ROOT}/inbox/${message.recipientId}/${message.id}`]: message }));
     },
     async cancelInterest(record) {
-      requireSession();
+      const uid = requireSession(), operationGeneration = generation;
       if (!safeKey(record.id) || !safeKey(record.recipientId)) throw explainFirebaseError(serviceError("invalid-interest", "O destinatário deste interesse não foi encontrado."));
       return write("Cancelando interesse.", async () => {
         const path = `${ROOT}/inbox/${record.recipientId}/${record.id}`;
         const snapshot = await dbSdk.get(ref(path));
+        if (operationGeneration !== generation || sessionUser?.uid !== uid) throw serviceError("session-changed", "A conta mudou durante a operação. Confira os registros da conta atual antes de continuar.");
         if (!snapshot.exists()) return { missing: true };
         await dbSdk.update(ref(path), { status: "cancelado" });
         return { missing: false };
@@ -392,31 +467,38 @@ export function createCloudService({ loadSdk = defaultLoader, loadAnalytics = ()
       return write("Excluindo registro recebido.", () => dbSdk.remove(ref(`${ROOT}/inbox/${uid}/${recordId}`)));
     },
     async getSentInterest(recipientId, recordId) {
-      requireSession();
+      const uid = requireSession(), operationGeneration = generation;
       if (!safeKey(recipientId) || !safeKey(recordId)) throw explainFirebaseError(serviceError("invalid-interest", "Registro inválido."));
-      try { const snapshot = await dbSdk.get(ref(`${ROOT}/inbox/${recipientId}/${recordId}`)); return snapshot.exists() ? { ...snapshot.val(), id: recordId } : null; }
+      try {
+        const snapshot = await dbSdk.get(ref(`${ROOT}/inbox/${recipientId}/${recordId}`));
+        if (operationGeneration !== generation || sessionUser?.uid !== uid) throw serviceError("session-changed", "A conta mudou durante a operação. Confira os registros da conta atual antes de continuar.");
+        return snapshot.exists() ? { ...snapshot.val(), id: recordId } : null;
+      }
       catch (error) { mapThrow(error); }
     },
     async enableAnalytics() {
       if (!initialized) throw explainFirebaseError(serviceError("not-ready", "O Firebase ainda não está pronto."));
+      const consentGeneration = ++analyticsGeneration;
       try {
         analyticsSdk = analyticsSdk || await loadAnalytics();
-        if (!(await analyticsSdk.isSupported())) return false;
+        if (!(await analyticsSdk.isSupported()) || consentGeneration !== analyticsGeneration || destroyed) return false;
         analytics = analytics || analyticsSdk.getAnalytics(app);
         analyticsSdk.setAnalyticsCollectionEnabled(analytics, true);
         return true;
       } catch { return false; }
     },
     async disableAnalytics() {
-      // No Analytics instance is created by opting out.
+      // Invalidates an enable still waiting on a slow SDK import.
+      ++analyticsGeneration;
       if (!analytics) return true;
       try { analyticsSdk.setAnalyticsCollectionEnabled(analytics, false); return true; }
       catch { return false; }
     },
     destroy() {
       if (writing) throw explainFirebaseError(serviceError("busy", "Aguarde o salvamento antes de desconectar o serviço."));
-      destroyed = true; ++generation; unsubscribeUser(); globalOff.forEach(off => off()); globalOff = [];
-      sessionUser = null; stateLoaded = false; initialized = false; connected = false; initPromise = null;
+      destroyed = true; ++lifecycle; ++authGeneration; ++analyticsGeneration;
+      stopDatabase(); globalOff.forEach(off => off()); globalOff = [];
+      sessionUser = null; stateLoaded = false; initialized = false; connected = false; securityFailure = null; initPromise = null; syncPromise = null;
     }
   };
   return api;

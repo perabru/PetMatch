@@ -16,14 +16,14 @@ A primeira execução pode falhar se o Pages ainda não estiver habilitado. O wo
 
 A configuração pública fornecida para o projeto **camada2** já está em `firebase-service.js`, com SDK 13.0.0. A chave de configuração web identifica o aplicativo; as regras e o Authentication são responsáveis pela autorização. Nenhuma credencial administrativa pertence ao frontend ou a este repositório.
 
-**Verificação de 20/10/2026:** a consulta anônima a um caminho privado inexistente de `petmatchV1/users` recebeu HTTP 200. Isso indica que as regras atuais permitem leitura anônima nessa área. Para não enviar dados pessoais a uma área sem proteção, o app bloqueia a inicialização da sincronização até que a consulta retorne 401/403. O modo local continua funcionando. Nenhum dado de teste foi gravado no projeto de produção.
+**Verificação de 22/10/2026:** a consulta anônima a um caminho privado inexistente de `petmatchV1/users` recebeu HTTP 200. Isso indica que as regras atuais permitem leitura anônima nessa área. Para não enviar dados pessoais a uma área sem proteção, o app bloqueia a inicialização da sincronização até que a consulta retorne 401/403. Login, cadastro, acesso com Google e recuperação de senha são independentes dessa verificação e podem ser usados quando os respectivos métodos estiverem habilitados no Authentication. Os registros da conta só ficam disponíveis depois da proteção do banco ser confirmada. O modo local continua funcionando. Nenhum dado de teste foi gravado no projeto de produção.
 
 Para liberar o modo online:
 
 1. No console Firebase do projeto `camada2`, abra **Authentication → Sign-in method** e habilite **E-mail/senha** e **Google**. No Google, selecione o e-mail de suporte solicitado e salve.
 2. Em **Authentication → Settings → Authorized domains**, adicione `perabru.github.io` para os fluxos de autenticação executados pelo site. Não inclua protocolo ou `/PetMatch/`.
 3. Em **Realtime Database → Rules**, aplique as regras de `rules/database.rules.json`, observando a seção seguinte para preservar outros aplicativos que usem o mesmo banco.
-4. Recarregue o site. O painel de conta informa o estado da conexão e eventuais erros.
+4. No site, use **Tentar conexão novamente** para verificar as novas regras. O painel mostra o serviço de contas e a sincronização separadamente. Se o download dos componentes do Firebase falhar, o botão **Recarregar página** refaz o carregamento; os dados locais já salvos são mantidos.
 
 ### Aplicar regras em um banco já usado por outros aplicativos
 
@@ -64,6 +64,12 @@ Os oito perfis iniciais são exemplos fictícios. Os mascotes da imagem não sã
 
 Firebase Analytics inicia somente quando o visitante marca a opção de consentimento. Desmarcar desativa a coleta. O aplicativo não envia nomes, mensagens, ocorrências ou anotações de atendimento como eventos de Analytics.
 
+## Recuperação e troca de conta
+
+Se a conta estiver conectada mas os registros ainda não tiverem sido carregados, exportação, importação e exclusão ficam desabilitadas. O site não gera um backup vazio como se fosse uma cópia da conta. A opção **Sair e usar sem conta** volta aos registros locais já existentes.
+
+A sincronização pode ser verificada novamente sem sair da conta. Trocas de usuário durante operações pendentes cancelam o uso dos resultados antigos. Fotos e mensagens opcionais ausentes em registros válidos do Firebase recebem valores padrão para não impedir o carregamento dos perfis.
+
 ## Executar em um servidor local
 
 Com Python 3 instalado:
@@ -83,5 +89,5 @@ Consulte `VALIDACAO.md` para o escopo e as limitações da verificação.
 Para executar as verificações de autenticação sem acessar o Firebase real, use Node.js 20 ou superior:
 
 ```bash
-node --test tests/auth.test.mjs
+node --test tests/*.mjs
 ```
